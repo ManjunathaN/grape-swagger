@@ -120,13 +120,18 @@ module Grape
                   description = value.is_a?(Hash) ? value[:desc] : ''
                   required = value.is_a?(Hash) ? !!value[:required] : false
                   paramType = path.match(":#{param}") ? 'path' : (method == 'POST') ? 'body' : 'query'
+                  allowableValues = value[:allowableValues] if value.is_a?(Hash) && value[:allowableValues]
+                  defaultValue = value[:defaultValue] if value.is_a?(Hash) && value[:defaultValue]
+                  
                   name = (value.is_a?(Hash) && value[:full_name]) || param
                   {
                     paramType: paramType,
                     name: name,
                     description: description,
                     dataType: dataType,
-                    required: required
+                    required: required,
+                    allowableValues: allowableValues,
+                    defaultValue: defaultValue
                   }
                 end
               else
