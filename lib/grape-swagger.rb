@@ -146,13 +146,17 @@ module Grape
                   dataType = 'String'
                   description = value.is_a?(Hash) ? value[:description] : ''
                   required = value.is_a?(Hash) ? !!value[:required] : false
+                  allowableValues = value[:allowableValues] if value.is_a?(Hash) && value[:allowableValues]
+                  defaultValue = value[:defaultValue] if value.is_a?(Hash) && value[:defaultValue]
                   paramType = "header"
                   {
                     paramType: paramType,
                     name: param,
                     description: description,
                     dataType: dataType,
-                    required: required
+                    required: required,
+                    allowableValues: allowableValues,
+                    defaultValue: defaultValue
                   }
                 end
               else
@@ -162,7 +166,8 @@ module Grape
 
             def parse_path(path, version)
               # adapt format to swagger format
-              parsed_path = path.gsub('(.:format)', '.{format}')
+              # parsed_path = path.gsub('(.:format)', '.{format}')
+              parsed_path = path.gsub('(.:format)', '')
               # This is attempting to emulate the behavior of 
               # Rack::Mount::Strexp. We cannot use Strexp directly because 
               # all it does is generate regular expressions for parsing URLs. 
