@@ -51,6 +51,7 @@ module Grape
             @@class_name = options[:class_name] || options[:mount_path].gsub('/','')
             @@markdown = options[:markdown]
             @@hide_documentation_path = options[:hide_documentation_path]
+            @@models_used = {}
             api_version = options[:api_version]
             base_path = options[:base_path]
 
@@ -72,7 +73,8 @@ module Grape
                 swaggerVersion: "1.1",
                 basePath: base_path || "http://#{env['HTTP_HOST']}",
                 operations:[],
-                apis: routes_array
+                apis: routes_array,
+                models: @@models_used
               }
             end
 
@@ -85,6 +87,8 @@ module Grape
               header['Access-Control-Request-Method'] = '*'
               routes = @@target_class::combined_routes[params[:name]]
               routes_array = routes.map do |route|
+
+                @@models_used.merge!(route.route_models) unless route.route_models.nil?
                 notes = route.route_notes && @@markdown ? Kramdown::Document.new(route.route_notes.strip_heredoc).to_html : route.route_notes
                 {
                   :path => parse_path(route.route_path, api_version),
@@ -93,6 +97,10 @@ module Grape
                     :summary => route.route_description || '',
                     :nickname   => route.route_method + route.route_path.gsub(/[\/:\(\)\.]/,'-'),
                     :httpMethod => route.route_method,
+                    :tags => route.route_tags,
+                    :errorResponses => route.route_error_responses,
+                    :deprecated => route.route_deprecated,
+                    :responseClass => route.route_response_class,
                     :parameters => parse_header_params(route.route_headers) +
                       parse_params(route.route_params, route.route_path, route.route_method)
                   }]
@@ -104,7 +112,8 @@ module Grape
                 swaggerVersion: "1.1",
                 basePath: base_path || "http://#{env['HTTP_HOST']}",
                 resourcePath: "",
-                apis: routes_array
+                apis: routes_array,
+                models: @@models_used
               }
             end
           end
@@ -122,6 +131,7 @@ module Grape
                   paramType = path.match(":#{param}") ? 'path' : (method == 'POST') ? 'body' : 'query'
                   allowableValues = value[:allowableValues] if value.is_a?(Hash) && value[:allowableValues]
                   defaultValue = value[:defaultValue] if value.is_a?(Hash) && value[:defaultValue]
+                  allowMultiple = value[:allowMultiple] if value.is_a?(Hash) && value[:allowMultiple]
                   
                   name = (value.is_a?(Hash) && value[:full_name]) || param
                   {
@@ -131,7 +141,8 @@ module Grape
                     dataType: dataType,
                     required: required,
                     allowableValues: allowableValues,
-                    defaultValue: defaultValue
+                    defaultValue: defaultValue,
+                    allowMultiple: allowMultiple
                   }
                 end
               else
@@ -148,6 +159,8 @@ module Grape
                   required = value.is_a?(Hash) ? !!value[:required] : false
                   allowableValues = value[:allowableValues] if value.is_a?(Hash) && value[:allowableValues]
                   defaultValue = value[:defaultValue] if value.is_a?(Hash) && value[:defaultValue]
+                  allowMultiple = value[:allowMultiple] if value.is_a?(Hash) && value[:allowMultiple]
+
                   paramType = "header"
                   {
                     paramType: paramType,
@@ -156,7 +169,8 @@ module Grape
                     dataType: dataType,
                     required: required,
                     allowableValues: allowableValues,
-                    defaultValue: defaultValue
+                    defaultValue: defaultValue,
+                    allowMultiple: allowMultiple,
                   }
                 end
               else
